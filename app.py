@@ -1,0 +1,92 @@
+from __future__ import division, print_function
+import sys
+import os
+import glob
+import re
+import serial
+import time
+import numpy as np
+#arduino = serial.Serial('COM3', 9600, timeout=.1)
+count = 0
+# tensorflow
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image
+
+# Flask utils
+from flask import Flask, redirect, url_for, request, render_template
+from werkzeug.utils import secure_filename
+from gevent.pywsgi import WSGIServer
+
+app = Flask(__name__)
+
+model = tf.keras.models.load_model('model/waste.h5')
+
+def model_predict(img_path,model):
+
+    img = image.load_img(img_path,target_size=(64,64))
+    #Preprocessing the image
+    x=image.img_to_array(img)
+    x=np.expand_dims(x,axis=0)
+    result = model.predict(x)
+
+    prediction = ''
+
+    if result[0][0] == 1:
+        '''var = '2'
+        c = var.encode()
+        print(c)
+        arduino.write(c)
+        # ard.write(c)
+        time.sleep(4)'''
+        prediction = 'recyclable waste'
+    else:
+        ''' var = '1'
+        c = var.encode()
+        print(c)
+        arduino.write(c)
+        # ard.write(c)
+        time.sleep(4)'''
+        prediction = 'organic waste'
+
+    return prediction
+
+@app.route('/',methods=['GET'])
+def index():
+    # Main page
+    return render_template('index.html')
+
+@app.route('/predict', methods=['GET','POST'])
+def upload():
+    if request.method == 'POST':
+        # Get the file from post request
+        f = request.files['file']
+
+        #save the file ./uploads
+        basepath = os.path.dirname(__file__)
+        file_path = os.path.join(basepath,'uploads',secure_filename(f.filename))
+        f.save(file_path)
+
+        # make prediction
+        preds = model_predict(file_path,model)
+
+        return preds
+    return None
+
+if __name__ == '__main__':
+
+    # app.run(port=5002, debug=True)
+
+    # Serve the app with gevent
+    #http_server = WSGIServer(('', 5000), app)
+    #http_server.serve_forever()
+    
+    #app.run(host="192.168.29.186", port=800, debug=False)
+
+    app.run()
+
+
+
+
+
+
+
